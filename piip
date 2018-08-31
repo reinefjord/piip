@@ -1,0 +1,118 @@
+#!/bin/bash
+
+DB=~/.piip/piip.db
+
+if [ ! -e $DB ]
+then
+    touch $DB
+fi
+
+current_datetime=$(date "+%Y-%m-%d %H:%M")
+
+
+function in {
+    last=$(tac $DB | grep -m 1 .)
+    last_out=$(echo $last | perl -ne '/.*--(.*)/ && print $1')
+    if [[ $last_out ]] || [[ -z $last ]]
+    then
+        echo $current_datetime >> $DB
+        echo "Piiped in at $current_datetime"
+    else
+        echo "You are already piiped in!"
+    fi
+}
+
+
+function out {
+    last=$(tac $DB | grep -m 1 .)
+    IFS='|' read last_in last_out <<<$(echo $last | perl -ne '/(\d*-\d*-\d* \d*:\d*)(--(.*))?/ && print "$1|$3"')
+    if [[ $last_in ]] && [[ -z $last_out ]]
+    then
+        sed -i.bak "\$s/\$/--$current_datetime/" $DB
+        echo "Piiped out at $current_datetime"
+    else
+        echo "You are not piiped in!"
+    fi
+}
+
+function check_health {
+    counter=0
+    unhealthy=()
+
+    while IFS= read -r line
+    do
+        counter=$((counter + 1))
+
+        IFS='|' read in_datetime out_datetime <<<$(echo $line | perl -ne '/(\d*-\d*-\d* \d*:\d*)(--(.*))?/ && print "$1|$3"')
+
+        if ! { [[ $in_datetime ]] && date --date "$in_datetime" &> /dev/null; }
+        then
+            unhealthy+=("Error on line $counter In date missing or malformed")
+        fi
+
+        if ! { [[ $out_datetime ]] && date --date "$out_datetime" &> /dev/null; }
+        then
+            unhealthy+=("Error on line $counter (in: $in_datetime): Out date missing or malformed")
+        fi
+
+    done < "$DB"
+
+    if [[ ! ${#unhealthy[@]} -eq 0 ]]
+    then
+        echo "Database unhealthy:"
+        for i in "${unhealthy[@]}"
+        do
+            echo "$i"
+        done
+    fi
+
+    if [[ ${#unhealthy[@]} -eq 0 ]]; then
+        return 0
+    else
+        printf "\n"
+        return 1
+    fi
+}
+
+
+function count {
+    check_health
+
+    day_sum=0
+
+    while IFS= read -r line
+    do
+        IFS='|' read in_datetime out_datetime <<<$(echo $line | perl -ne '/(\d*-\d*-\d* \d*:\d*)(--(.*))?/ && print "$1|$3"')
+
+        in_date=$(date --date "$in_datetime" -Id)
+        out_date=$(date --date "$out_datetime" -Id)
+
+        in_epoch=$(date --date "$in_datetime" +%s)
+        out_epoch=$(date --date "$out_datetime" +%s)
+
+        delta=$(($out_epoch - $in_epoch))
+
+        if [[ $in_date == $last_date ]] || [[ ! $last_date ]]
+        then
+            day_sum=$(($day_sum+$delta))
+        else
+            TZ=UTC0 printf "%s: %(%Hh %Mm)T\n" "$last_date" "$day_sum"
+            day_sum=$delta
+        fi
+
+        last_date=$in_date
+    done < "$DB"
+    TZ=UTC0 printf "%s: %(%Hh %Mm)T\n" "$in_date" "$day_sum"
+}
+
+function edit {
+    $EDITOR ~/.piip/piip.db
+}
+
+
+if [ $# -eq 0 ]; then
+    count
+fi
+
+"$@"
+
