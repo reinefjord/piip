@@ -5,6 +5,12 @@ Small bash script for tracking which and how many hours you've worked.
 Create `~/.piip/` or change the `DB` variable to whatever you want. That's
 pretty much it. A good idea is to add the script to `$PATH`.
 
+This script makes use of Bash >=4 features.
+
+The GNU `date` and BSD `date` are not compatable, set the `$DATEBIN` variable
+to you GNU `date` if your default `date` is BSD. If you are on OS X for
+example, install `coreutils` with `brew` and set `$DATEBIN` to `gdate`.
+
 ## Usage
 ```
 piip in             Start tracking time

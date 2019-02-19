@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+DATEBIN=date
 
 DB=~/.piip/piip.db
 
@@ -7,7 +9,7 @@ then
     touch $DB
 fi
 
-current_datetime=$(date "+%Y-%m-%d %H:%M")
+current_datetime=$($DATEBIN "+%Y-%m-%d %H:%M")
 
 
 function in {
@@ -45,12 +47,12 @@ function check_health {
 
         IFS='|' read in_datetime out_datetime <<<$(echo $line | perl -ne '/(\d*-\d*-\d* \d*:\d*)(--(.*))?/ && print "$1|$3"')
 
-        if ! { [[ $in_datetime ]] && date --date "$in_datetime" &> /dev/null; }
+        if ! { [[ $in_datetime ]] && $DATEBIN --date "$in_datetime" &> /dev/null; }
         then
-            unhealthy+=("Error on line $counter In date missing or malformed")
+            unhealthy+=("Error on line $counter In $DATEBIN missing or malformed")
         fi
 
-        if ! { [[ $out_datetime ]] && date --date "$out_datetime" &> /dev/null; }
+        if ! { [[ $out_datetime ]] && $DATEBIN --date "$out_datetime" &> /dev/null; }
         then
             unhealthy+=("Error on line $counter (in: $in_datetime): Out date missing or malformed")
         fi
@@ -84,11 +86,11 @@ function count {
     do
         IFS='|' read in_datetime out_datetime <<<$(echo $line | perl -ne '/(\d*-\d*-\d* \d*:\d*)(--(.*))?/ && print "$1|$3"')
 
-        in_date=$(date --date "$in_datetime" -Id)
-        out_date=$(date --date "$out_datetime" -Id)
+        in_date=$($DATEBIN --date "$in_datetime" -Id)
+        out_date=$($DATEBIN --date "$out_datetime" -Id)
 
-        in_epoch=$(date --date "$in_datetime" +%s)
-        out_epoch=$(date --date "$out_datetime" +%s)
+        in_epoch=$($DATEBIN --date "$in_datetime" +%s)
+        out_epoch=$($DATEBIN --date "$out_datetime" +%s)
 
         delta=$(($out_epoch - $in_epoch))
 
