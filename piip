@@ -13,7 +13,7 @@ current_datetime=$($DATEBIN "+%Y-%m-%d %H:%M")
 
 
 function in {
-    last=$(tac $DB | grep -m 1 .)
+    last=$(tail -n 1 $DB)
     last_out=$(echo $last | perl -ne '/.*--(.*)/ && print $1')
     if [[ $last_out ]] || [[ -z $last ]]
     then
@@ -26,7 +26,7 @@ function in {
 
 
 function out {
-    last=$(tac $DB | grep -m 1 .)
+    last=$(tail -n 1 $DB)
     IFS='|' read last_in last_out <<<$(echo $last | perl -ne '/(\d*-\d*-\d* \d*:\d*)(--(.*))?/ && print "$1|$3"')
     if [[ $last_in ]] && [[ -z $last_out ]]
     then
